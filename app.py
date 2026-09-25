@@ -1,13 +1,14 @@
 import streamlit as st
 import google.generativeai as genai
+import time
+import random
 
 st.set_page_config(page_title="AI Study Assistant PRO", layout="wide")
-
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 @st.cache_resource
 def load_model():
-    return genai.GenerativeModel('gemini-3.8-flash')
+    return genai.GenerativeModel('gemini-3.8-flash') # ya gemini-1.5-flash-8b jo free me zyada chalta hai
 
 model = load_model()
 
@@ -34,16 +35,28 @@ if prompt := st.chat_input("Sawal likho... e.g. pythagoras theorem"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        try:
-            full_text = ""
-            placeholder = st.empty()
-            final_prompt = f"You are expert {subject} teacher. Mode: {mode}. Language: {language}. Question: {prompt}. If maths, give step-by-step with LaTeX."
-            response = model.generate_content(final_prompt, stream=True)
-            for chunk in response:
-                if chunk.text:
-                    full_text += chunk.text
-                    placeholder.markdown(full_text + "▌")
-            placeholder.markdown(full_text)
-            st.session_state.messages.append({"role": "assistant", "content": full_text})
-        except Exception as e:
-            st.error(f"Error: {e}")
+        placeholder = st.empty()
+        full_text = ""
+        final_prompt = f"You are expert {subject} teacher. Mode: {mode}. Language: {language}. Question: {prompt}. If maths, give step-by-step with LaTeX."
+        
+        # --- RETRY LOGIC FOR 429 ERROR ---
+        for attempt in range(3):
+            try:
+                response = model.generate_content(final_prompt, stream=True)
+                for chunk in response:
+                    if chunk.text:
+                        full_text += chunk.text
+                        placeholder.markdown(full_text + "▌")
+                placeholder.markdown(full_text)
+                st.session_state.messages.append({"role": "assistant", "content": full_text})
+                break
+            except Exception as e:
+                if "429" in str(e) or "quota" in str(e).lower():
+                    wait = 15 + random.randint(0,5)
+                    placeholder.warning(f"⚠️ Daily limit hit! {wait} sec wait karke retry kar raha hu... Attempt {attempt+1}/3")
+                    time.sleep(wait)
+                else:
+                    st.error(f"Error: {e}")
+                    break
+        else:
+            st.error("❌ Aaj ka 20 requests ka free quota khatam ho gaya. Kal try karo ya nayi API key lagao.")
