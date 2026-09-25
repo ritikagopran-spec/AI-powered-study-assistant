@@ -17,7 +17,7 @@ except:
 # --- FAST MODEL LOADING (Cache se fast hoga) ---
 @st.cache_resource
 def load_model():
-    return genai.GenerativeModel('gemini-1.5-flash')
+    return genai.GenerativeModel('gemini-2.0-flash')
 
 model = load_model()
 
