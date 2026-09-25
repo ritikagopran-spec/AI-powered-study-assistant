@@ -26,7 +26,7 @@ def get_response_with_retry(prompt):
     for attempt in range(3):
         try:
             # Streaming for speed
-            response = model.generate_content(prompt, stream=true)
+            response = model.generate_content(prompt, stream=True)
             full_text = ""
             placeholder = st.empty()
             for chunk in response:
